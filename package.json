@@ -1,0 +1,8 @@
+{
+  "name": "othent-minter",
+  "version": "1.0.0",
+  "main": "src/deploy.js",
+  "repository": "https://github.com/labscommunity/othent-minter.git",
+  "author": "Tate Berenbaum <tb@communitylabs.com>, Matias Paraji <mparaji@communitylabs.com>",
+  "license": "MIT"
+}
