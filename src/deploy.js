@@ -22,7 +22,7 @@ const emailTemplate = fs.readFileSync(
 const contractSource = "CONTRACT SOURCE HERE";
 const JWK = {};
 
-async function parseUserList() {}
+async function parseUserList() { }
 
 async function mintAsset(userAddress) {
   const client = await Arweave.init({
@@ -97,10 +97,13 @@ async function runIt() {
       throw new Error(err);
     }
 
-    setTimeout(() => {
-      console.log("Sleeping to avoid DDOSing mail servers");
-    }, 1000);
+    console.log("Sleeping to avoid DDOSing mail servers");
+    await delay(1000);
   }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Bombs away
