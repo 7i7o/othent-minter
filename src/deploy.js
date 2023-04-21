@@ -13,14 +13,22 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 import Arweave from "arweave";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const emailFrom = "hello@othent.io";
-const emailPassword = "PASSWORD GOES HERE";
+const emailPassword = process.env.EMAIL_PASSWORD;
 const emailTemplate = fs.readFileSync(
   path.resolve(__dirname, "./templates/email.html")
 );
 const contractSource = "CONTRACT SOURCE HERE";
-const JWK = {};
+
+const JWK = JSON.parse(process.env.JWK_PATH ?
+  fs.readFileSync(path.resolve(__dirname, process.env.JWK_PATH), 'utf-8')
+  :
+  Buffer.from(process.env.BASE64_JWK, 'base64').toString('utf-8')
+);
 
 // Prepare Base64 Image DataURL
 const imgData = fs.readFileSync(
