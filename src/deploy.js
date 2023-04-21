@@ -70,9 +70,12 @@ async function mintAsset(userAddress) {
 
   await client.transactions.sign(sbt);
   await client.transactions.post(sbt);
+
+  // TODO: return txId
+  return ''
 }
 
-async function sendEmail(userEmail) {
+async function sendEmail(userEmail, txId) {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -80,11 +83,17 @@ async function sendEmail(userEmail) {
       pass: emailPassword,
     },
   });
+  const emailContent = emailTemplate.replace(
+    '{{NFT_LINK}}',
+    !txId ?
+      'https://vt.communitylabs.com/email-certificate.jpg'
+      :
+      `https://arweave.net/${txId}`);
   const outboundEmail = {
     from: emailFrom,
     to: userEmail,
     subject: "Arweave Frontier NFT",
-    html: emailTemplate,
+    html: emailContent,
   };
   transporter.sendMail(outboundEmail, (error, info) => {
     if (error) {
@@ -110,7 +119,7 @@ async function runIt() {
 
     console.log(`Now emailing for user: ${userList[i].address}`);
     try {
-      const confirmation = await sendEmail(userList[i].email);
+      const confirmation = await sendEmail(userList[i].email, txID);
     } catch (err) {
       throw new Error(err);
     }
