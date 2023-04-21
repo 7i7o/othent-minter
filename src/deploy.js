@@ -13,16 +13,30 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 import Arweave from "arweave";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const emailFrom = "hello@othent.io";
-const emailPassword = "PASSWORD GOES HERE";
+const emailPassword = process.env.EMAIL_PASSWORD;
 const emailTemplate = fs.readFileSync(
   path.resolve(__dirname, "./templates/email.html")
 );
 const contractSource = "CONTRACT SOURCE HERE";
-const JWK = {};
 
-async function parseUserList() {}
+const JWK = JSON.parse(process.env.JWK_PATH ?
+  fs.readFileSync(path.resolve(__dirname, process.env.JWK_PATH), 'utf-8')
+  :
+  Buffer.from(process.env.BASE64_JWK, 'base64').toString('utf-8')
+);
+
+// Prepare Base64 Image DataURL
+const imgData = fs.readFileSync(
+  path.resolve(__dirname, "./templates/certificate.jpg")
+);
+const imgDataEncoded = "data:image/jpeg;base64," + imgData.toString('base64')
+
+async function parseUserList() { }
 
 async function mintAsset(userAddress) {
   const client = await Arweave.init({
@@ -33,28 +47,35 @@ async function mintAsset(userAddress) {
 
   const sbt = await client.createTransaction(
     {
-      data: "CERTIFICATE IMAGE DATA HERE",
+      data: imgDataEncoded,
     },
     JWK
   );
   sbt.addTag("App-Name", "SmartWeaveContract");
   sbt.addTag("App-Version", "0.3.0");
+
   sbt.addTag("Contract-Src", contractSource);
+  // TODO: We have to replace this ˆˆˆ We need to create a tx with the
+  // contractSource, & then use that txId for the Sontract-Src tag
+
   sbt.addTag("Content-Type", "image/JPEG");
   sbt.addTag(
-    "Contract-State",
+    "Init-State",
     JSON.stringify({
       balances: {
-        userAddress: 1,
+        [userAddress]: 1,
       },
     })
   );
 
   await client.transactions.sign(sbt);
   await client.transactions.post(sbt);
+
+  // TODO: return txId
+  return ''
 }
 
-async function sendEmail(userEmail) {
+async function sendEmail(userEmail, txId) {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -62,11 +83,17 @@ async function sendEmail(userEmail) {
       pass: emailPassword,
     },
   });
+  const emailContent = emailTemplate.replace(
+    '{{NFT_LINK}}',
+    !txId ?
+      'https://vt.communitylabs.com/email-certificate.jpg'
+      :
+      `https://arweave.net/${txId}`);
   const outboundEmail = {
     from: emailFrom,
     to: userEmail,
     subject: "Arweave Frontier NFT",
-    html: emailTemplate,
+    html: emailContent,
   };
   transporter.sendMail(outboundEmail, (error, info) => {
     if (error) {
@@ -92,15 +119,18 @@ async function runIt() {
 
     console.log(`Now emailing for user: ${userList[i].address}`);
     try {
-      const confirmation = await sendEmail(userList[i].email);
+      const confirmation = await sendEmail(userList[i].email, txID);
     } catch (err) {
       throw new Error(err);
     }
 
-    setTimeout(() => {
-      console.log("Sleeping to avoid DDOSing mail servers");
-    }, 1000);
+    console.log("Sleeping to avoid DDOSing mail servers");
+    await delay(1000);
   }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Bombs away
