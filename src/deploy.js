@@ -22,6 +22,12 @@ const emailTemplate = fs.readFileSync(
 const contractSource = "CONTRACT SOURCE HERE";
 const JWK = {};
 
+// Prepare Base64 Image DataURL
+const imgData = fs.readFileSync(
+  path.resolve(__dirname, "./templates/certificate.jpg")
+);
+const imgDataEncoded = "data:image/jpeg;base64," + imgData.toString('base64')
+
 async function parseUserList() { }
 
 async function mintAsset(userAddress) {
@@ -33,7 +39,7 @@ async function mintAsset(userAddress) {
 
   const sbt = await client.createTransaction(
     {
-      data: "CERTIFICATE IMAGE DATA HERE",
+      data: imgDataEncoded,
     },
     JWK
   );
