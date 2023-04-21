@@ -4,5 +4,15 @@
   "main": "src/deploy.js",
   "repository": "https://github.com/labscommunity/othent-minter.git",
   "author": "Tate Berenbaum <tb@communitylabs.com>, Matias Paraji <mparaji@communitylabs.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "fmt": "prettier --write ."
+  },
+  "dependencies": {
+    "arweave": "^1.13.7",
+    "nodemailer": "^6.9.1"
+  },
+  "devDependencies": {
+    "prettier": "^2.8.7"
+  }
 }
