@@ -14,24 +14,21 @@ export function handle(state, action) {
   if (input.function === "balance") {
     const target = input.target;
     const ticker = state.ticker;
-    const divisibility = state.divisibility;
-    const balance = balances[target] / divisibility;
-
     if (typeof target !== "string") {
       throw new ContractError("Must specificy target to get balance for");
     }
-    if (typeof balances[target] !== "number") {
-      throw new ContractError("Cannnot get balance, target does not exist");
-    }
-
+    const balance = balances[target];
     return {
       result: {
         target,
         ticker,
-        balance: balance.toFixed(divisibility),
-        divisibility,
-      },
+        balance: typeof balance === "number" ? balance : 0
+      }
     };
+  }
+
+  if (input.function === "transfer") {
+    throw new ContractError("Token not transferable");
   }
 
   throw new ContractError(
