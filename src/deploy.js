@@ -53,10 +53,14 @@ async function mintAsset(userAddress) {
   );
   sbt.addTag("App-Name", "SmartWeaveContract");
   sbt.addTag("App-Version", "0.3.0");
+
   sbt.addTag("Contract-Src", contractSource);
+  // TODO: We have to replace this ˆˆˆ We need to create a tx with the
+  // contractSource, & then use that txId for the Sontract-Src tag
+
   sbt.addTag("Content-Type", "image/JPEG");
   sbt.addTag(
-    "Contract-State",
+    "Init-State",
     JSON.stringify({
       balances: {
         [userAddress]: 1,
