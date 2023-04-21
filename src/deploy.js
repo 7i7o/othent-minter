@@ -59,7 +59,7 @@ async function mintAsset(userAddress) {
     "Contract-State",
     JSON.stringify({
       balances: {
-        userAddress: 1,
+        [userAddress]: 1,
       },
     })
   );
