@@ -2,10 +2,10 @@
  * Deploy script for minting soulbound NFTs.
  *
  * Logic Flow:
- * 1) Parse list of Othent users
- * 2) For each contract address:
- * 2.A) Mint a new atomic asset with the provided contract.js
- * 2.B) Send an email to the user with the template provided by Fayaz
+ * 1) Parse list of Othent users ✅
+ * 2) For each contract address: ✅
+ * 2.A) Mint a new atomic asset with the provided contract.js ✅
+ * 2.B) Send an email to the user with the template provided by Fayaz ✅
  * 3) Celebrate 🎉
  */
 
@@ -22,8 +22,8 @@ const emailPassword = process.env.EMAIL_PASSWORD;
 const emailTemplate = fs.readFileSync(
   path.resolve(__dirname, "./templates/email.html")
 );
-const contractSource = "CONTRACT SOURCE HERE";
 
+// Parse JWK
 const JWK = JSON.parse(process.env.JWK_PATH ?
   fs.readFileSync(path.resolve(__dirname, process.env.JWK_PATH), 'utf-8')
   :
@@ -34,17 +34,67 @@ const JWK = JSON.parse(process.env.JWK_PATH ?
 const imgData = fs.readFileSync(
   path.resolve(__dirname, "./templates/certificate.jpg")
 );
-const imgDataEncoded = "data:image/jpeg;base64," + imgData.toString('base64')
+const imgDataEncoded = "data:image/jpeg;base64," + imgData.toString('base64');
 
-async function parseUserList() { }
+// Prepare contract source for all sbts
+const contractSource = fs.readFileSync(
+  path.resolve(__dirname, "./templates/contract.js")
+);
+let contractSrcTxId;
+try {
+  contractSrcTxId = await deployContractSource(contractSource);
+} catch (err) {
+  throw new Error(err);
+}
 
-async function mintAsset(userAddress) {
+// Set a Template for the Initial (and permanent) State of the sbts
+const initStateTemplate = {
+  name: "Arweave Fundamentals Certificate",
+  description: "Certificate of completion of Arweave Fundamentals",
+  ticker: "ARFCert",
+  maxSupply: 1,
+  contentType: "image/JPEG",
+}
+
+async function deployContractSource(contractSrc) {
+  // Initialize client
   const client = await Arweave.init({
     host: "arweave.net",
     port: 443,
     protocol: "https",
   });
 
+  // Create Tx
+  const contractTx = await client.createTransaction({ data: contractSrc, }, JWK);
+  contractTx.addTag("App-Name", "SmartWeaveContractSource");
+  contractTx.addTag("App-Version", "0.3.0");
+  contractTx.addTag('Content-Type', 'application/javascript');
+
+  // Sign
+  await client.transactions.sign(contractTx);
+  const contractTxId = contractTx.id;
+
+  // Post
+  await client.transactions.post(contractTx);
+
+  return contractTxId
+}
+
+async function parseUserList() {
+  return JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, './listOfUsers.json'), 'utf-8')
+  );
+}
+
+async function mintAsset(userAddress) {
+  // Initialize client
+  const client = await Arweave.init({
+    host: "arweave.net",
+    port: 443,
+    protocol: "https",
+  });
+
+  // Create Tx
   const sbt = await client.createTransaction(
     {
       data: imgDataEncoded,
@@ -53,26 +103,29 @@ async function mintAsset(userAddress) {
   );
   sbt.addTag("App-Name", "SmartWeaveContract");
   sbt.addTag("App-Version", "0.3.0");
-
-  sbt.addTag("Contract-Src", contractSource);
-  // TODO: We have to replace this ˆˆˆ We need to create a tx with the
-  // contractSource, & then use that txId for the Sontract-Src tag
-
+  // Set the txId of the Contract as Contract-Src
+  sbt.addTag("Contract-Src", contractSrcTxId);
   sbt.addTag("Content-Type", "image/JPEG");
   sbt.addTag(
     "Init-State",
     JSON.stringify({
+      ...initStateTemplate,
+      owner: userAddress,
       balances: {
         [userAddress]: 1,
       },
     })
   );
 
+  // Sign
   await client.transactions.sign(sbt);
+  const sbtTxId = sbt.id;
+
+  // Post
   await client.transactions.post(sbt);
 
   // TODO: return txId
-  return ''
+  return sbtTxId;
 }
 
 async function sendEmail(userEmail, txId) {
