@@ -7,13 +7,13 @@
  */
 
 export function handle(state, action) {
-  const balances = state.balances;
   const input = action.input;
   const caller = action.caller;
 
   if (input.function === "balance") {
     const target = input.target;
     const ticker = state.ticker;
+    const balances = state.balances;
     if (typeof target !== "string") {
       throw new ContractError("Must specificy target to get balance for");
     }
