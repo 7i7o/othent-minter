@@ -11,7 +11,7 @@ export function handle(state, action) {
   const caller = action.caller;
 
   if (input.function === "getOwner") {
-    return state.owner;
+    return { result: state.owner }
   }
 
   if (input.function === "balance") {
