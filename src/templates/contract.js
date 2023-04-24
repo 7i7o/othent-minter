@@ -10,6 +10,10 @@ export function handle(state, action) {
   const input = action.input;
   const caller = action.caller;
 
+  if (input.function === "getOwner") {
+    return state.owner;
+  }
+
   if (input.function === "balance") {
     const target = input.target;
     const ticker = state.ticker;
