@@ -97,7 +97,9 @@ async function sendEmail(userEmail, txId) {
     !txId ?
       'https://vt.communitylabs.com/email-certificate.jpg'
       :
-      `https://arweave.net/${txId}`);
+      // `https://arweave.net/${txId}`);
+      `https://viewblock.io/arweave/tx/${txId}`
+  );
   const outboundEmail = {
     from: emailFrom,
     to: userEmail,
