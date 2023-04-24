@@ -15,8 +15,9 @@ import path from "path";
 import dotenv from 'dotenv';
 import { DeployPlugin, ArweaveSigner } from 'warp-contracts-plugin-deploy';
 import { WarpFactory } from 'warp-contracts';
+import { fileURLToPath } from 'url';
 
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
 
 const emailFrom = "hello@othent.io";
@@ -31,21 +32,25 @@ const JWK = JSON.parse(process.env.JWK_PATH ?
   :
   Buffer.from(process.env.BASE64_JWK, 'base64').toString('utf-8')
 );
+const signerJWK = new ArweaveSigner(JWK);
 
 // Prepare Base64 Image DataURL
 const imgData = fs.readFileSync(
   path.resolve(__dirname, "./templates/certificate.jpg")
 );
-const imgDataEncoded = "data:image/jpeg;base64," + imgData.toString('base64');
+// const imgDataEncoded = "data:image/jpeg;base64," + imgData.toString('base64');
+
+// Load Contract Source code
+const contractSource = fs.readFileSync(
+  path.resolve(__dirname, "./templates/contract.js"),
+  'utf-8'
+);
 
 // Prepare contract source for all sbts
 const warp = WarpFactory.forMainnet().use(new DeployPlugin());
-const contractSource = fs.readFileSync(
-  path.resolve(__dirname, "./templates/contract.js")
-);
 let contractSrcTxId;
 try {
-  const contractTx = await warp.createSource({ src: contractSource }, new ArweaveSigner(JWK));
+  const contractTx = await warp.createSource({ src: contractSource }, signerJWK);
   contractSrcTxId = await warp.saveSource(contractTx);
   console.log("Contract Source deployed to: ", contractSrcTxId);
 } catch (err) {
@@ -61,7 +66,7 @@ async function parseUserList() {
 async function mintAsset(userAddress) {
 
   const sbtTx = await warp.deployFromSourceTx({
-    wallet: JWK,
+    wallet: signerJWK,
     srcTxId: contractSrcTxId,
     initState: JSON.stringify({
       name: "Arweave Fundamentals Certificate",
@@ -73,7 +78,7 @@ async function mintAsset(userAddress) {
         [userAddress]: 1,
       },
     }),
-    data: { "Content-Type": "image/JPEG", body: imgDataEncoded },
+    data: { "Content-Type": "image/JPEG", body: imgData },
   })
 
   return sbtTx.contractTxId;
@@ -138,4 +143,4 @@ function delay(ms) {
 }
 
 // Bombs away
-// runIt();
+runIt();
