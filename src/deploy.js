@@ -12,8 +12,10 @@
 import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
-import Arweave from "arweave";
 import dotenv from 'dotenv';
+import { DeployPlugin, ArweaveSigner } from 'warp-contracts-plugin-deploy';
+import { WarpFactory } from 'warp-contracts';
+
 
 dotenv.config();
 
@@ -37,47 +39,17 @@ const imgData = fs.readFileSync(
 const imgDataEncoded = "data:image/jpeg;base64," + imgData.toString('base64');
 
 // Prepare contract source for all sbts
+const warp = WarpFactory.forMainnet().use(new DeployPlugin());
 const contractSource = fs.readFileSync(
   path.resolve(__dirname, "./templates/contract.js")
 );
 let contractSrcTxId;
 try {
-  contractSrcTxId = await deployContractSource(contractSource);
+  const contractTx = await warp.createSource({ src: contractSource }, new ArweaveSigner(JWK));
+  contractSrcTxId = await warp.saveSource(contractTx);
+  console.log("Contract Source deployed to: ", contractSrcTxId);
 } catch (err) {
   throw new Error(err);
-}
-
-// Set a Template for the Initial (and permanent) State of the sbts
-const initStateTemplate = {
-  name: "Arweave Fundamentals Certificate",
-  description: "Certificate of completion of Arweave Fundamentals",
-  ticker: "ARFCert",
-  maxSupply: 1,
-  contentType: "image/JPEG",
-}
-
-async function deployContractSource(contractSrc) {
-  // Initialize client
-  const client = await Arweave.init({
-    host: "arweave.net",
-    port: 443,
-    protocol: "https",
-  });
-
-  // Create Tx
-  const contractTx = await client.createTransaction({ data: contractSrc, }, JWK);
-  contractTx.addTag("App-Name", "SmartWeaveContractSource");
-  contractTx.addTag("App-Version", "0.3.0");
-  contractTx.addTag('Content-Type', 'application/javascript');
-
-  // Sign
-  await client.transactions.sign(contractTx);
-  const contractTxId = contractTx.id;
-
-  // Post
-  await client.transactions.post(contractTx);
-
-  return contractTxId
 }
 
 async function parseUserList() {
@@ -87,45 +59,24 @@ async function parseUserList() {
 }
 
 async function mintAsset(userAddress) {
-  // Initialize client
-  const client = await Arweave.init({
-    host: "arweave.net",
-    port: 443,
-    protocol: "https",
-  });
 
-  // Create Tx
-  const sbt = await client.createTransaction(
-    {
-      data: imgDataEncoded,
-    },
-    JWK
-  );
-  sbt.addTag("App-Name", "SmartWeaveContract");
-  sbt.addTag("App-Version", "0.3.0");
-  // Set the txId of the Contract as Contract-Src
-  sbt.addTag("Contract-Src", contractSrcTxId);
-  sbt.addTag("Content-Type", "image/JPEG");
-  sbt.addTag(
-    "Init-State",
-    JSON.stringify({
-      ...initStateTemplate,
+  const sbtTx = await warp.deployFromSourceTx({
+    wallet: JWK,
+    srcTxId: contractSrcTxId,
+    initState: JSON.stringify({
+      name: "Arweave Fundamentals Certificate",
+      description: "Certificate of completion of Arweave Fundamentals",
+      ticker: "ARFCert",
+      contentType: "image/JPEG",
       owner: userAddress,
       balances: {
         [userAddress]: 1,
       },
-    })
-  );
+    }),
+    data: { "Content-Type": "image/JPEG", body: imgDataEncoded },
+  })
 
-  // Sign
-  await client.transactions.sign(sbt);
-  const sbtTxId = sbt.id;
-
-  // Post
-  await client.transactions.post(sbt);
-
-  // TODO: return txId
-  return sbtTxId;
+  return sbtTx.contractTxId;
 }
 
 async function sendEmail(userEmail, txId) {
@@ -187,4 +138,4 @@ function delay(ms) {
 }
 
 // Bombs away
-runIt();
+// runIt();
